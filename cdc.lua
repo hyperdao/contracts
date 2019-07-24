@@ -379,6 +379,7 @@ function M:setAnnualStabilityFee(newAnnualStabilityFee:string)
 	end
 	table.append(annualStabilityFeeList,tostring(now)..","..newAnnualStabilityFee)
 	self.storage.annualStabilityFeeList = annualStabilityFeeList
+	self.storage.annualStabilityFee = newAnnualStabilityFee
 	emit SetAnnualStabilityFee(newAnnualStabilityFee)
 	return "OK"
 end

@@ -77,8 +77,7 @@ offline function M:getStabilityFee(cdcId:string)
 	if stopTime>0 then
 		endTime = stopTime
 	end
-	
-	
+
 	let annualStabilityFeeList = self.storage.annualStabilityFeeList
 	let count = #annualStabilityFeeList
 	var totalSecs:int = 0
@@ -370,7 +369,7 @@ function M:closeCdc(arg:string)
 	let feeReceiver = self.storage.admin
 	stableTokenContract:destoryAndTrans(from_address..","..tostring(stableTokenAmount)..","..feeReceiver..","..tostring(fee))
 	
-	cdc_info['stabilityFee'] = stableTokenAmount
+	cdc_info['stabilityFee'] = fee
 	cdc_info['cdcId'] = cdc_id
 	emit CloseCdc(json.dumps(cdc_info))
 	return "OK"

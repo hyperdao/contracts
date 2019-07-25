@@ -298,8 +298,17 @@ end
 
 offline function M:feedPrices(_: string)
 	checkState(self)
-    let feedPricesStr = json.dumps(self.storage.feedPrices)
-    return feedPricesStr
+    let feedPrices = self.storage.feedPrices
+	let feeders = self.storage.feeders
+	let count = #feeders
+	var idx = 1
+	let result = {}
+	while(idx<=count) do
+		result[feeders[idx]] = feedPrices[idx]
+		idx = idx+1
+	end
+	let r = json.dumps(result)
+    return r
 end
 
 offline function M:getPrice(_: string)

@@ -560,8 +560,8 @@ function M:destoryAndTrans(arg:string)
 
 	let from_address = tostring(parsed[1])
 	let destory_amount = checkInteger(tostring(parsed[2]))
-	if destory_amount <= 0 then
-		return error("arg destory_amount must > 0")
+	if destory_amount < 0 then
+		return error("arg destory_amount must >= 0")
 	end
 	
 	let trans_to_address = tostring(parsed[3])
@@ -569,6 +569,10 @@ function M:destoryAndTrans(arg:string)
 	let trans_amount = checkInteger(tostring(parsed[4]))
 	if trans_amount < 0 then
 		return error("arg trans_amount must >= 0")
+	end
+	
+	if destory_amount == 0 and trans_amount==0 then
+		return error("destory_amount and trans_amount is 0")
 	end
 	
 	let origSupply = self.storage.supply

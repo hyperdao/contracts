@@ -7,7 +7,6 @@ type Storage = {
 	admin:string,
 	state:string,
     collateralAsset: string,
-	collateralizationRatio:string,
 	annualStabilityFee:string,
 	liquidationRatio:string,
 	liquidationPenalty:string,
@@ -86,7 +85,6 @@ offline function M:isNeedLiquidation(arg:string)
 	let proxy = self.storage.proxy
 	let r = delegate_call(proxy, 'isNeedLiquidation', arg)
 	return r
-
 end
 
 offline function M:getLiquidableInfo(arg:string)
@@ -106,18 +104,21 @@ offline function M:getCdc(cdc_id:string)
 	let stabilityFee = delegate_call(proxy, 'getStabilityFee', cdc_id)
 	cdc_info['stabilityFee'] = stabilityFee
 	cdc_info['cdcId'] = cdc_id
+	
+	let needLiquidate = delegate_call(proxy, 'isNeedLiquidation', cdc_id)
+	cdc_info['isNeedLiquidation'] = needLiquidate
+
 	let r = json.dumps(cdc_info)
 	return r
 end
 
---{"admin":"con3rrr53ghjp3","collateral":"BTC","collateralizationRatio":"1.5","AnnualStabilityFee":"0.13","liquidationRatio":"1.25","liquidationPenalty":"0.13","liquidationDiscount":"0.03","stableTokenAddr":"conr34g0rt4tkg","priceFeederAddr":"conbnoet0xfv"}
+--{"admin":"con3rrr53ghjp3","collateral":"BTC","AnnualStabilityFee":"0.13","liquidationRatio":"1.25","liquidationPenalty":"0.13","liquidationDiscount":"0.03","stableTokenAddr":"conr34g0rt4tkg","priceFeederAddr":"conbnoet0xfv"}
 offline function M:getInfo(arg:string)
 	let info = {}
 	
 	info['admin']=self.storage.admin
 	info['state']=self.storage.state
 	info['collateralAsset']=self.storage.collateralAsset
-	info['collateralizationRatio']=self.storage.collateralizationRatio
 	info['annualStabilityFee']=self.storage.annualStabilityFee
 	info['liquidationRatio']=self.storage.liquidationRatio
 	info['liquidationPenalty']=self.storage.liquidationPenalty
@@ -143,7 +144,6 @@ function M:init()
     self.storage.admin = get_from_address()
 	self.storage.state = 'NOT_INITED'
     self.storage.collateralAsset = ''
-	self.storage.collateralizationRatio = ''
 	self.storage.annualStabilityFee = ''
 	self.storage.liquidationRatio = ''
 	self.storage.liquidationPenalty = ''
@@ -159,33 +159,24 @@ function M:init()
 end
 
 
---arg: collateralAsset,collateralizationRatio,AnnualStabilityFee,liquidationRatio,liquidationPenalty,liquidationDiscount,priceFeederAddr,stableTokenAddr,proxyAddr
+--arg: collateralAsset,AnnualStabilityFee,liquidationRatio,liquidationPenalty,liquidationDiscount,priceFeederAddr,stableTokenAddr,proxyAddr
 function M:init_config(arg: string)
 	checkAdmin(self)
 	if self.storage.state ~= 'NOT_INITED' then
         return error("this contract inited before")
     end
-	let parsed:Array<string> = totable(parse_args(arg, 9, "arg format error, need format: collateralAsset,collateralizationRatio,annualStabilityFee,liquidationRatio,liquidationPenalty,liquidationDiscount,priceFeederAddr,stableTokenAddr,proxyAddr"))
-    let info:Map<string> = {collateralAsset: parsed[1],collateralizationRatio:parsed[2], annualStabilityFee:parsed[3],liquidationRatio: parsed[4],liquidationPenalty: parsed[5],liquidationDiscount: parsed[6], priceFeederAddr: parsed[7],stableTokenAddr: parsed[8],proxyAddr:parsed[9]}
+	let parsed:Array<string> = totable(parse_args(arg, 8, "arg format error, need format: collateralAsset,annualStabilityFee,liquidationRatio,liquidationPenalty,liquidationDiscount,priceFeederAddr,stableTokenAddr,proxyAddr"))
+    let info:Map<string> = {collateralAsset: parsed[1],annualStabilityFee:parsed[2],liquidationRatio: parsed[3],liquidationPenalty: parsed[4],liquidationDiscount: parsed[5], priceFeederAddr: parsed[6],stableTokenAddr: parsed[7],proxyAddr:parsed[8]}
     
 	let collateralAsset = info.collateralAsset
 
-	let collateralizationRatio = info.collateralizationRatio
-	let sn_collateralizationRatio = safemath.safenumber(collateralizationRatio)
-	if not sn_collateralizationRatio then
-		return error("collateralizationRatio is not number")
-	end
-	let sn_1 = safemath.safenumber(1)
-	let sn_0 = safemath.safenumber(0)
-	if safemath.number_lt(sn_collateralizationRatio,sn_1) then
-		return error("collateralizationRatio must >= 100%")
-	end
-	
 	let annualStabilityFee = info.annualStabilityFee
 	let sn_annualStabilityFee = safemath.safenumber(annualStabilityFee)
 	if not sn_annualStabilityFee then
 		return error("annualStabilityFee is not number")
 	end
+	let sn_0 = safemath.safenumber(0)
+	let sn_1 = safemath.safenumber(1)
 	if safemath.number_lte(sn_annualStabilityFee,sn_0) then
 		return error("annualStabilityFee must > 0%")
 	end
@@ -196,10 +187,7 @@ function M:init_config(arg: string)
 		return error("liquidationRatio is not number")
 	end
 	if safemath.number_lt(sn_liquidationRatio,sn_1) then
-		return error("liquidationRatio must >= 100%")
-	end
-	if safemath.number_gte(sn_liquidationRatio,sn_collateralizationRatio) then
-		return error("liquidationRatio must < collateralizationRatio")
+		return error("liquidationRatio must > 100%")
 	end
 	
 	let liquidationPenalty = info.liquidationPenalty
@@ -251,7 +239,6 @@ function M:init_config(arg: string)
 	end
 	
 	self.storage.collateralAsset = collateralAsset
-	self.storage.collateralizationRatio = collateralizationRatio
 	self.storage.annualStabilityFee = annualStabilityFee
 	self.storage.liquidationRatio = liquidationRatio
 	self.storage.liquidationPenalty = liquidationPenalty
@@ -333,25 +320,6 @@ function M:changeAdmin(newAdmin:string)
 end
 
 
-function M:setCollateralizationRatio(newCollateralizationRatio:string)
-	checkAdmin(self)
-	let sn_newCollateralizationRatio = safemath.safenumber(newCollateralizationRatio)
-	if not sn_newCollateralizationRatio then
-		return error("newCollateralizationRatio is not number")
-	end
-	let sn_1 = safemath.safenumber(1)
-	if safemath.number_lt(sn_newCollateralizationRatio,sn_1) then
-		return error("newCollateralizationRatio must >= 100%")
-	end
-
-	if newCollateralizationRatio==self.storage.collateralizationRatio then
-		return error("new collateralizationRatio is same as old")
-	end
-	self.storage.collateralizationRatio = newCollateralizationRatio	
-	emit SetCollateralizationRatio(newCollateralizationRatio)
-	return "OK"
-end
-
 function M:setAnnualStabilityFee(newAnnualStabilityFee:string)
 	checkAdmin(self)
 	let annualStabilityFeeList = self.storage.annualStabilityFeeList 
@@ -387,18 +355,9 @@ end
 function M:setLiquidationRatio(newLiquidationRatio:string)
 	checkAdmin(self)
 	let sn_newLiquidationRatio = safemath.safenumber(newLiquidationRatio)
-	let collateralizationRatio = self.storage.collateralizationRatio
-	let sn_collateralizationRatio = safemath.safenumber(collateralizationRatio)
-	if not sn_collateralizationRatio then
-		return error("collateralizationRatio is not number")
-	end
 	let sn_1 = safemath.safenumber(1)
 	if safemath.number_lt(sn_newLiquidationRatio,sn_1) then
-		return error("newLiquidationRatio must >= 100%")
-	end
-	
-	if safemath.number_gte(sn_newLiquidationRatio,sn_collateralizationRatio) then
-		return error("newLiquidationRatio must < collateralizationRatio")
+		return error("newLiquidationRatio must > 100%")
 	end
 	
 	if(newLiquidationRatio == self.storage.liquidationRatio) then
@@ -513,6 +472,60 @@ function M:takeBackCollateralByToken(arg:string)
 	let r = delegate_call(proxy, 'takeBackCollateralByToken', arg)
 	return r
 end
+
+--arg:cdcId,to_address
+function M:transferCdc(arg:string)
+	let parsed = parse_args(arg,2,"arg format wrong,need format:cdc_id,to_address")
+	let cdc_id = tostring(parsed[1])
+	let cdc_info_obj = fast_map_get("cdc",cdc_id)
+	if cdc_info_obj == nil then
+		return error("cdc not exist , cdc_id:"..cdc_id)
+	end
+	let to_address = tostring(parsed[2])
+	if not is_valid_address(to_address) then
+		return error("to_address is not valid")
+	end
+	let cdc_info = totable(json.loads(tostring(cdc_info_obj)))
+	
+	let from_address = get_from_address()
+	if from_address~=cdc_info['owner'] then
+		return error("you are not cdc owner")
+	end
+	
+	cdc_info['owner'] = to_address
+	fast_map_set("cdc",cdc_id,json.dumps(cdc_info))
+
+	emit TransferCdc(json.dumps({from_address:from_address,to_address:to_address,cdcId:cdc_id}))
+	return "OK"
+end
+
+---args:cdc_id,expandLoanAmount
+function M:expandLoan(arg:string)
+	checkState(self)
+	let proxy = self.storage.proxy
+	let from_address = get_from_address()
+	let r = delegate_call(proxy, 'expandLoan',from_address..","..arg)
+	return r
+end
+
+---args:cdc_id,widrawCollateralAmount
+function M:widrawCollateral(arg:string)
+	checkState(self)
+	let proxy = self.storage.proxy
+	let from_address = get_from_address()
+	let r = delegate_call(proxy, 'widrawCollateral',from_address..","..arg)
+	return r
+end
+
+---args:cdc_id,payBackAmount(include fee)
+function M:payBack(arg:string)
+	checkState(self)
+	let proxy = self.storage.proxy
+	let from_address = get_from_address()
+	let r = delegate_call(proxy, 'payBack',from_address..","..arg)
+	return r
+end
+
 	
 function M:on_destroy()
     error("can't destroy cdc contract")

@@ -1,6 +1,7 @@
 -- contract for feed prices of different anchor tokens
 
 -- 喂价人可以有多个，最终喂价为每个喂价人的最新喂价掐头去尾取均值（如果超过5个喂价人），如果不超过5个喂价人，最终喂价是各喂价人的最新喂价的均值
+let MAX_FEEDERS_COUNT = 100
 
 type Storage = {
     owner: string,
@@ -231,6 +232,11 @@ function M:add_feeder(new_feeder: string)
 		return error("new feeder address can't be in the feeders list")
 	end
 	let feedPrices = self.storage.feedPrices
+	
+	if((#feedPrices)>=MAX_FEEDERS_COUNT) then
+		return error("exceed max feeders count:"..tostring(MAX_FEEDERS_COUNT))
+	end
+	
     table.append(feeders, new_feeder)
 	table.append(feedPrices,self.storage.price)
 	---self.storage.price = calculatePrice(feedPrices)  ---- don't change???????

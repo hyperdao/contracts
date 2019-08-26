@@ -118,7 +118,7 @@ offline function M:getStabilityFee(cdcId:string)
 		end	
 	else
 		sn_annualStabilityFee = safemath.safenumber(self.storage.annualStabilityFee )
-		if endTime <= secSinceEpoch then
+		if endTime < secSinceEpoch then
 			return error("secSinceEpoch in cdc record wrong")
 		end
 		secs = endTime - secSinceEpoch
@@ -244,7 +244,11 @@ offline function M:getLiquidableInfo(cdcId:string)
 		cdc_info["curPrice"] = price
 		cdc_info["auctionPrice"] = safemath.number_tostring(sn_auctionPrice)
 		cdc_info["penaltyAmount"] = penaltyAmount
-		cdc_info["returnAmount"] = returnAmount
+		if returnAmount<0 then
+			cdc_info["returnAmount"] = 0
+		else
+			cdc_info["returnAmount"] = returnAmount
+		end
 	end
 	
 	let r = json.dumps(cdc_info)
@@ -380,14 +384,18 @@ function M:closeCdc(arg:string)
 	fast_map_set("cdc",cdc_id,nil)
 
 	let collateralAmount = tointeger(cdc_info['collateralAmount'])
-	let res = transfer_from_contract_to_address(from_address, self.storage.collateralAsset, collateralAmount)
-	if res ~= 0 then
-		return error("transfer from contract to " .. from_address .. " realAmount " .. tostring(collateralAmount) .. " error, error code is " .. tostring(res))
+	if collateralAmount > 0 then
+		let res = transfer_from_contract_to_address(from_address, self.storage.collateralAsset, collateralAmount)
+		if res ~= 0 then
+			return error("transfer from contract to " .. from_address .. " realAmount " .. tostring(collateralAmount) .. " error, error code is " .. tostring(res))
+		end
 	end
 	
-	let stableTokenContract:object = import_contract_from_address(self.storage.stableTokenAddr)
-	let feeReceiver = self.storage.admin
-	stableTokenContract:destoryAndTrans(from_address..","..tostring(stableTokenAmount)..","..feeReceiver..","..tostring(fee))
+	if stableTokenAmount>0 then
+		let stableTokenContract:object = import_contract_from_address(self.storage.stableTokenAddr)
+		let feeReceiver = self.storage.admin
+		stableTokenContract:destoryAndTrans(from_address..","..tostring(stableTokenAmount)..","..feeReceiver..","..tostring(fee))
+	end
 	
 	cdc_info['stabilityFee'] = fee
 	cdc_info['cdcId'] = cdc_id
@@ -612,6 +620,7 @@ function M:expandLoan(arg:string)
 	stableTokenContract:mint(from_address..","..tostring(realAmount))
 	if fee > 0 then
 		stableTokenContract:mint((self.storage.admin)..","..tostring(fee))  --
+		self.storage.totalCollectedStablityFee = self.storage.totalCollectedStablityFee + fee
 	end
 	
 	let info = {cdcId:cdc_id,expandLoanAmount:expandLoanAmount,from_address:from_address,repayFee:fee,realGotAmount:realAmount}
@@ -644,12 +653,8 @@ function M:widrawCollateral(arg:string)
 		return error("can't withdraw more,collateralAmount in cdc is:"..tostring(ori_collateralAmount))
 	end
 	if ori_stableTokenAmount == 0 then
-		if widrawCollateralAmount == ori_collateralAmount then
-			fast_map_set("cdc",cdc_id,nil)
-		else
-			cdc_info['collateralAmount'] = ori_collateralAmount - widrawCollateralAmount
-			fast_map_set("cdc",cdc_id,json.dumps(cdc_info))
-		end
+		cdc_info['collateralAmount'] = ori_collateralAmount - widrawCollateralAmount
+		fast_map_set("cdc",cdc_id,json.dumps(cdc_info))
 	else
 		if widrawCollateralAmount == ori_collateralAmount then
 			return error("can't withdraw all")
@@ -714,6 +719,7 @@ function M:payBack(arg:string)
 		cdc_info['stableTokenAmount'] = after_stableTokenAmount
 	end
 	fast_map_set("cdc",cdc_id,json.dumps(cdc_info))
+	self.storage.totalCollectedStablityFee = self.storage.totalCollectedStablityFee + fee
 	let stableTokenContract:object = import_contract_from_address(self.storage.stableTokenAddr)
 	let feeReceiver = self.storage.admin
 	stableTokenContract:destoryAndTrans(from_address..","..tostring(repay_principal)..","..feeReceiver..","..tostring(fee))

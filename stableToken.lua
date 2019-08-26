@@ -604,14 +604,6 @@ function M:destoryAndTrans(arg:string)
 	return "OK"	
 end
 
-function M:changeMinter(arg:string)
-	checkState(self)
-	checkMinter(self)
-	self.storage.minter = arg
-	emit ChangeMinter(arg)
-	return "OK"
-end
-
 ------------------------------------------------------------------------------------------------------------------------
 
 offline function M:lockedBalanceOf(owner: string)

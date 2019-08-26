@@ -161,7 +161,6 @@ end
 
 --arg: collateralAsset,AnnualStabilityFee,liquidationRatio,liquidationPenalty,liquidationDiscount,priceFeederAddr,stableTokenAddr,proxyAddr
 function M:init_config(arg: string)
-	checkAdmin(self)
 	if self.storage.state ~= 'NOT_INITED' then
         return error("this contract inited before")
     end
@@ -298,8 +297,8 @@ function M:changeProxy(newProxy:string)
 		return error("new proxy is same as old")
 	end
 	
-	let stableTokenContract:object = import_contract_from_address(self.storage.stableTokenAddr)
-	stableTokenContract:changeMinter(newProxy)
+	---let stableTokenContract:object = import_contract_from_address(self.storage.stableTokenAddr)
+	---stableTokenContract:changeMinter(newProxy)
 		
 	self.storage.proxy = newProxy
 	emit ChangeProxy(newProxy)

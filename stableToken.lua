@@ -1,5 +1,5 @@
--- ERC20ºÏÔ¼
--- Ö§³Ö¶àÇ©ºÏÔ¼³ÖÓĞ±¾ºÏÔ¼´ú±ÒµÄ°æ±¾
+-- ERC20åˆçº¦
+-- æ”¯æŒå¤šç­¾åˆçº¦æŒæœ‰æœ¬åˆçº¦ä»£å¸çš„ç‰ˆæœ¬
 
 type State = 'NOT_INITED' | 'COMMON' | 'PAUSED' | 'STOPPED'
 
@@ -8,15 +8,15 @@ type Storage = {
     symbol: string,
     supply: int,
     precision: int, -- only used to display
-    -- allowed: Map<string>, -- ¸÷ÓÃ»§ÊÚÈ¨¸øspenderÓÃ»§¿ÉÒÔ¶à´ÎÌáÏÖµÄÓà¶î£¬Ã¿Ò»ÏîÖµÊÇÒ»¸ö userAddress=>amount int¹¹³ÉµÄjson string
+    -- allowed: Map<string>, -- å„ç”¨æˆ·æˆæƒç»™spenderç”¨æˆ·å¯ä»¥å¤šæ¬¡æç°çš„ä½™é¢ï¼Œæ¯ä¸€é¡¹å€¼æ˜¯ä¸€ä¸ª userAddress=>amount intæ„æˆçš„json string
     -- lockedAmounts: Map<string>, -- userAddress => "lockedAmount,unlockBlockNumber"
     state: string,
     allowLock: bool,
-    fee: int, -- ÊÖĞø·Ñ
-    minTransferAmount: int, -- Ã¿´Î×îµÍ×ªÕË½ğ¶î
-    feeReceiveAddress: string, -- ÊÖĞø·Ñ½ÓÊÕµØÖ·
+    fee: int, -- æ‰‹ç»­è´¹
+    minTransferAmount: int, -- æ¯æ¬¡æœ€ä½è½¬è´¦é‡‘é¢
+    feeReceiveAddress: string, -- æ‰‹ç»­è´¹æ¥æ”¶åœ°å€
     admin: string, -- admin user address
-	minter:string
+	minter:Array<string> --need to support multi-tokens
 }
 
 -- events: Transfer, Paused, Resumed, Stopped, AllowedLock, Locked, Unlocked
@@ -31,7 +31,7 @@ function M:init()
     self.storage.precision = 0
     self.storage.state = 'NOT_INITED'
     self.storage.admin = caller_address
-	self.storage.minter = ''
+	self.storage.minter = []   
     self.storage.allowLock = false
     self.storage.fee = 0
     self.storage.minTransferAmount = 0
@@ -49,11 +49,11 @@ let function checkInteger(numstr: string)
 end
 
 let function get_from_address()
-    -- Ö§³ÖºÏÔ¼×÷Îª´ú±Ò³ÖÓĞÕß
+    -- æ”¯æŒåˆçº¦ä½œä¸ºä»£å¸æŒæœ‰è€…
     var from_address: string
     let prev_contract_id = get_prev_call_frame_contract_address()
     if prev_contract_id and is_valid_contract_address(prev_contract_id) then
-        -- Èç¹ûÀ´Ô´·½ÊÇºÏÔ¼Ê±
+        -- å¦‚æœæ¥æºæ–¹æ˜¯åˆçº¦æ—¶
         from_address = prev_contract_id
     else
         from_address = caller_address
@@ -68,7 +68,7 @@ let function checkAdmin(self: table)
 end
 
 let function checkMinter(self: table)
-    if self.storage.minter ~= get_from_address() then
+    if not arrayContains(self.storage.minter,get_from_address()) then
         return error("you are not minter, can't call this function")
     end
 end
@@ -170,8 +170,8 @@ function M:init_token(arg: string)
 	if not is_valid_contract_address(minter) then
 		return error("minter must be contract")
 	end
-    self.storage.minter = minter
-
+    --self.storage.minter = minter
+	table.append(self.storage.minter,miner)
     if not info.precision then
         return error("precision needed")
     end
@@ -200,6 +200,18 @@ function M:openAllowLock(_: string)
     emit AllowedLock("")
 end
 
+function M:addMinter(minter: sting)
+    checkAdmin(self)
+    checkState(self)
+	if not is_valid_contract_address(minter) then
+		return error("minter must be contract")
+	end
+	if arrayContains(self.storage.miner,minter) then
+	    return error("minter should only be added once.")
+	end
+	table.append(self.storage.minter,miner)
+	return "ok"
+end
 
 function M:setFee(feeStr: string)
     checkAdmin(self)
@@ -289,7 +301,7 @@ function M:transfer(arg: string)
     emit Transfer(eventArgStr)
 
 	if is_valid_contract_address(to) then
-        -- Èç¹ûÄ¿±êÊÇºÏÔ¼µØÖ·£¬¿ÉÄÜÊÇ¶àÇ©ºÏÔ¼£¬ĞèÒªµ÷ÓÃ»Øµ÷º¯Êı
+        -- å¦‚æœç›®æ ‡æ˜¯åˆçº¦åœ°å€ï¼Œå¯èƒ½æ˜¯å¤šç­¾åˆçº¦ï¼Œéœ€è¦è°ƒç”¨å›è°ƒå‡½æ•°
         let multiOwnedContract = import_contract_from_address(to)
         let amountStr = tostring(amount - fee)
         if multiOwnedContract and (multiOwnedContract.on_deposit_contract_token) then
@@ -298,7 +310,7 @@ function M:transfer(arg: string)
     end
 end
 
--- spenderÓÃ»§´ÓÊÚÈ¨ÈËÊÚÈ¨µÄ½ğ¶îÖĞ·¢Æğ×ªÕË
+-- spenderç”¨æˆ·ä»æˆæƒäººæˆæƒçš„é‡‘é¢ä¸­å‘èµ·è½¬è´¦
 -- arg format: fromAddress,toAddress,amount(with precision)
 function M:transferFrom(arg: string)
     checkState(self)
@@ -368,7 +380,7 @@ function M:transferFrom(arg: string)
     emit Transfer(eventArgStr)
 end
 
--- ÊÚÈ¨ÁíÒ»¸öÓÃ»§¿ÉÒÔ´Ó×Ô¼ºµÄÓà¶îÖĞÌáÏÖ
+-- æˆæƒå¦ä¸€ä¸ªç”¨æˆ·å¯ä»¥ä»è‡ªå·±çš„ä½™é¢ä¸­æç°
 -- arg format: spenderAddress,amount(with precision)
 function M:approve(arg: string)
     checkState(self)
@@ -445,7 +457,7 @@ function M:lock(arg: string)
     end
     let from_address = get_from_address()
     if from_address ~= caller_address then
-        return error("only common user account can lock balance") -- Ö»ÓĞÆÕÍ¨ÕË»§¿ÉÒÔËø²Ö£¬ºÏÔ¼²»ÄÜËø²Ö
+        return error("only common user account can lock balance") -- åªæœ‰æ™®é€šè´¦æˆ·å¯ä»¥é”ä»“ï¼Œåˆçº¦ä¸èƒ½é”ä»“
     end
     let balance = getBalanceOfUser(self, from_address)
     if (toLockAmount > balance) then
@@ -679,7 +691,7 @@ offline function M:balanceOf(owner: string)
     return amountStr
 end
 
--- ²éÑ¯Ò»¸öÓÃ»§±»ÁíÍâÄ³¸öÓÃ»§ÊÚÈ¨µÄ½ğ¶î
+-- æŸ¥è¯¢ä¸€ä¸ªç”¨æˆ·è¢«å¦å¤–æŸä¸ªç”¨æˆ·æˆæƒçš„é‡‘é¢
 -- arg format: spenderAddress,authorizerAddress
 offline function M:approvedBalanceFrom(arg: string)
     let parsed = parse_at_least_args(arg, 2, "argument format error, need format is spenderAddress,authorizerAddress")
@@ -703,7 +715,7 @@ offline function M:approvedBalanceFrom(arg: string)
     return allowedAmountStr
 end
 
--- ²éÑ¯ÓÃ»§ÊÚÈ¨¸øÆäËûÈËµÄËùÓĞ½ğ¶î
+-- æŸ¥è¯¢ç”¨æˆ·æˆæƒç»™å…¶ä»–äººçš„æ‰€æœ‰é‡‘é¢
 -- arg format: fromAddress
 offline function M:allApprovedFromUser(arg: string)
     let authorizer = arg

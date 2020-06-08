@@ -25,11 +25,11 @@ type Storage = {
 var M = Contract<Storage>()
 
 let function get_from_address()
-    -- Ö§³ÖºÏÔ¼×÷Îª´ú±Ò³ÖÓĞÕß
+    -- æ”¯æŒåˆçº¦ä½œä¸ºä»£å¸æŒæœ‰è€…
     var from_address: string
     let prev_contract_id = get_prev_call_frame_contract_address()
     if prev_contract_id and is_valid_contract_address(prev_contract_id) then
-        -- Èç¹ûÀ´Ô´·½ÊÇºÏÔ¼Ê±
+        -- å¦‚æœæ¥æºæ–¹æ˜¯åˆçº¦æ—¶
         from_address = prev_contract_id
     else
         from_address = caller_address
@@ -137,7 +137,18 @@ end
 
 
 
-
+let function arrayContains(col: Array<object>, item: object)
+    if not item then
+        return false
+    end
+    var value: object
+    for _, value in ipairs(col) do
+        if value == item then
+            return true
+        end
+    end
+    return false
+end
 -----------------------------------------------------------------------------------------------------------------------
 
 function M:init()
@@ -229,7 +240,7 @@ function M:init_config(arg: string)
 	let stableTokenContract:object = import_contract_from_address(stableTokenAddr)
 	let minter = stableTokenContract:minter('')
 	let cur_con_addr = get_current_contract_address()
-	if minter~=cur_con_addr then
+	if not arrayContains(minter,cur_con_addr) then
 		return error("stableTokenContract's minter is not cdc contract")
 	end
 	

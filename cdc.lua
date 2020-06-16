@@ -6,7 +6,7 @@ type State = 'NOT_INITED' | 'COMMON' | 'STOPPED'
 type Storage = {
 	admin:string,
 	state:string,
-    collateralAsset: string,
+        collateralAsset: string,
 	annualStabilityFee:string,
 	liquidationRatio:string,
 	liquidationPenalty:string,
@@ -362,6 +362,17 @@ function M:setAnnualStabilityFee(newAnnualStabilityFee:string)
 	return "OK"
 end
 
+offline function M:getAnnualStabilityFeeList(_:string)
+    let r = self.storage.annualStabilityFeeList
+	return r
+end
+
+offline function M:getAnnualStabilityFee(_:string)
+    let r = self.storage.annualStabilityFee
+	return r
+end
+
+
 function M:setLiquidationRatio(newLiquidationRatio:string)
 	checkAdmin(self)
 	let sn_newLiquidationRatio = safemath.safenumber(newLiquidationRatio)
@@ -377,6 +388,11 @@ function M:setLiquidationRatio(newLiquidationRatio:string)
 	self.storage.liquidationRatio = newLiquidationRatio	
 	emit SetLiquidationRatio(newLiquidationRatio)
 	return "OK"
+end
+
+offline M:getLiquidationRatio(_:string)
+    let r - self.storage.liquidationRatio
+	return r
 end
 
 function M:setLiquidationPenalty(newLiquidationPenalty:string)
@@ -396,6 +412,11 @@ function M:setLiquidationPenalty(newLiquidationPenalty:string)
 	self.storage.liquidationPenalty = newLiquidationPenalty	
 	emit SetLiquidationPenalty(newLiquidationPenalty)
 	return "OK"
+end
+
+offline function M:getLiquidationPenalty(_:string)
+    let r = self.storage.liquidationPenalty
+	return r
 end
 
 function M:setLiquidationDiscount(newLiquidationDiscount:string)
@@ -420,6 +441,12 @@ function M:setLiquidationDiscount(newLiquidationDiscount:string)
 	emit SetLiquidationDiscount(newLiquidationDiscount)
 	return "OK"
 end
+
+offline function M:getLiquidationDiscount(_:string)
+    let r = self.storage.liquidationDiscount
+	return r
+end
+
 
 function M:setPriceFeederAddr(priceFeederAddr:string)
 	checkAdmin(self)

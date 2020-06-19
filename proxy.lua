@@ -6,12 +6,13 @@ type State = 'NOT_INITED' | 'COMMON' | 'STOPPED'
 type Storage = {
 	admin:string,
 	state:string,
-        collateralAsset: string,
+    collateralAsset: string,
 	annualStabilityFee:string,
 	liquidationRatio:string,
 	liquidationPenalty:string,
 	liquidationDiscount:string,
 	priceFeederAddr:string,
+	cdcAddr:string,
 	stableTokenAddr:string,
 	totalCollectedStablityFee:int,
 	totalLiquidationPenalty:int,
@@ -81,8 +82,10 @@ offline function M:getStabilityFee(cdcId:string)
 	if stopTime>0 then
 		endTime = stopTime
 	end
-
-	let annualStabilityFeeList = self.storage.annualStabilityFeeList
+	
+	let cdcAddrContract:object = import_contract_from_address(self.storage.cdcAddr)
+	
+	let annualStabilityFeeList = cdcAddrContract:getAnnualStabilityFeeList('')
 	let count = #annualStabilityFeeList
 	var totalSecs:int = 0
 	var secs:int = 0
@@ -267,6 +270,7 @@ function M:init()
 	self.storage.liquidationDiscount = ''
 	self.storage.stableTokenAddr = ''
 	self.storage.priceFeederAddr = ''
+	self.storage.cdcAddr = ''
 	self.storage.totalCollectedStablityFee = 0
 	self.storage.totalLiquidationPenalty = 0
 	self.storage.proxy = ''
@@ -274,6 +278,31 @@ function M:init()
 	self.storage.annualStabilityFeeList = []
     print("cdc contract created")
 end
+
+function M:init_config(arg: string)
+	if self.storage.state ~= 'NOT_INITED' then
+        return error("this contract inited before")
+    end
+	
+	let parsed:Array<string> = totable(parse_args(arg, 3, "arg format error, need format: stableTokenAddr,priceFeederAddr,cdcAddr"))
+	self.storage.stableTokenAddr = parsed[1]
+	self.storage.priceFeederAddr = parsed[2]
+	self.storage.cdcAddr = parsed[3]
+	let cdcContract:object = import_contract_from_address(self.storage.cdcAddr)
+	let priceFeederContract:object = import_contract_from_address(self.storage.priceFeederAddr)
+	let baseAsset = priceFeederContract:baseAsset('')
+	self.storage.collateralAsset = baseAsset
+	
+	let cdcAddrContract:object = import_contract_from_address(self.storage.cdcAddr)
+	self.storage.annualStabilityFee = cdcAddrContract:getAnnualStabilityFee('')
+	self.storage.liquidationRatio = cdcAddrContract:getLiquidationRatio('')
+	self.storage.liquidationPenalty = cdcAddrContract:getLiquidationPenalty('')
+	self.storage.liquidationDiscount = cdcAddrContract:getLiquidationDiscount('')
+	
+	
+	
+end
+
 
 function M:on_deposit_asset(arg:string)
 	return error("can't deposit")

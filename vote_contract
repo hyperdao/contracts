@@ -1,0 +1,26 @@
+--vote contract for cdc 
+type State = 'NOT_INITED' | 'COMMON' | 'STOPPED'
+
+
+type Storage = {
+	admin:string,
+	state:string,
+	priceFeederAddr:string,
+	cdcAddr:string,
+	stableTokenAddr:string
+}
+
+-- events: Stopped
+
+var M = Contract<Storage>()
+
+
+function M:init()
+    self.storage.admin = get_from_address()
+	self.storage.state = 'NOT_INITED'
+  
+	self.storage.stableTokenAddr = ''
+	self.storage.priceFeederAddr = ''
+	self.storage.cdcAddr = ''
+    print("cdc contract created")
+end

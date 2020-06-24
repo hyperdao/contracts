@@ -22,5 +22,114 @@ function M:init()
 	self.storage.stableTokenAddr = ''
 	self.storage.priceFeederAddr = ''
 	self.storage.cdcAddr = ''
+	self.storage.voters = []
     print("cdc contract created")
 end
+
+let function get_from_address()
+    -- 支持合约作为代币持有者
+    var from_address: string
+    let prev_contract_id = get_prev_call_frame_contract_address()
+    if prev_contract_id and is_valid_contract_address(prev_contract_id) then
+        -- 如果来源方是合约时
+        from_address = prev_contract_id
+    else
+        from_address = caller_address
+    end
+    return from_address
+end
+
+let function checkAdmin(self: table)
+    if self.storage.admin ~= get_from_address() then
+        return error("you are not admin, can't call this function")
+    end
+end
+
+let function checkState(M: table)
+    if M.storage.state ~= 'COMMON' then
+        return error("state error, now state is " .. tostring(M.storage.state))
+    end
+end
+
+let function parse_args(arg: string, count: int, error_msg: string)
+    if not arg then
+        return error(error_msg)
+    end
+    let parsed = string.split(arg, ',')
+    if (not parsed) or (#parsed ~= count) then
+        return error(error_msg)
+    end
+    return parsed
+end
+
+
+let function arrayContains(col: Array<object>, item: object)
+    if not item then
+        return false
+    end
+    var value: object
+    for _, value in ipairs(col) do
+        if value == item then
+            return true
+        end
+    end
+    return false
+end
+
+
+function M:init_config(arg: string)
+	if self.storage.state ~= 'NOT_INITED' then
+        return error("this contract inited before")
+    end
+	let parsed:Array<string> = totable(parse_args(arg, 1, "arg format error, need format: cdcAddr"))
+	cdcAddr = parsed[1]
+	if not is_valid_contract_address(cdcAddr) then
+		return error("cdcAddr not contract")
+	end
+	self.storage.cdcAddr = cdcAddr
+	
+	self.storage.state = COMMON
+end
+
+
+function M:join(arg:string)
+    checkAdmin()
+	checkState()
+	let parsed:Array<string> = totable(parse_args(arg, 1, "arg format error, need format: voter"))
+	voter = parsed[1]
+	if not is_valid_contract_address(cdcAddr) then
+		return error("cdcAddr not contract")
+	end	
+	
+	if arrayContains(self.storage.voters, voter) then
+	    return error("voter has exist.")
+	end
+	table.append(self.storage.voters,voter)
+end
+
+function M:remove(arg:string)
+    checkAdmin()
+	checkState()
+	let parsed:Array<string> = totable(parse_args(arg, 1, "arg format error, need format: voter"))
+	voter = parsed[1]
+	if not is_valid_contract_address(cdcAddr) then
+		return error("cdcAddr not contract")
+	end	
+	if not arrayContains(self.storage.voters, voter) then
+	    return error("voter has not exist.")
+	end
+	
+	table.remove(self.storage.voters,voter)
+end
+
+function M:propose(arg:string)
+    checkState()
+	checkAdmin()
+	let parsed:Array<string> = totable(parse_args(arg, 1, "arg format error, need format: voter"))
+	voter = parsed[1]
+	
+	
+	
+end
+
+

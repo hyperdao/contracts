@@ -127,9 +127,51 @@ function M:propose(arg:string)
 	checkAdmin()
 	let parsed:Array<string> = totable(parse_args(arg, 1, "arg format error, need format: voter"))
 	voter = parsed[1]
+	array<string> votes = ['annualStabilityFee','liquidationRatio','liquidationPenalty','liquidationDiscount']
 	
+	if not arrayContains(votes,arg) then
+	   return error("invalid propsal.")
+	end
 	
-	
+	let txid = get_transaction_id()
+	proposal_info = {"proposer":get_from_address(),"topic":voter,"create_time":get_chain_now(),'expiration time':get_chain_now()+24*3600,'approval':[],'finished':false}
+	fast_map_set('votes',txid,json.dumps(proposal_info))
+end
+
+function M:approval(arg:string)
+   checkState()
+   let parsed:Array<string> = totable(parse_args(arg, 1, "arg format error, need format: voter"))
+   let vote_obj = fast_map_get("votes",parsed[1])
+   if vote_obj == nil then
+       return error("there is no this vote.")
+   end
+   
+   vote_info = to_table(json.loads(to_string(vote_obj)))
+   let approvals:array<string> = vote_info['approval']
+   
+   if arrayContains(approvals,get_from_address()) then
+       return error("this voter has voted once.")
+   end
+   
+   if get_chain_now() > vote_info['expiration time'] then
+       vote_info['finished'] = true
+	   fast_map_set('votes',parsed[1],json.dumps(vote_info))
+	   return error("votes has  expired.")
+   end
+   
+   table.append(approvals,get_from_address())
+   vote_info['approval'] = approvals
+   fast_map_set('votes',parsed[1],json.dumps(vote_info))
 end
 
 
+offline M:get_vote(args:string)
+   let parsed:Array<string> = totable(parse_args(arg, 1, "arg format error, need format: voter"))
+   let vote_obj = fast_map_get("votes",parsed[1])
+   if vote_obj == nil then
+       return error("there is no this vote.")
+   end
+   vote_info = to_table(json.loads(to_string(vote_obj)))
+   let r = json.dumps(vote_info)
+   return r
+end

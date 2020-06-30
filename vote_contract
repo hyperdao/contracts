@@ -161,6 +161,16 @@ function M:approval(arg:string)
    
    table.append(approvals,get_from_address())
    vote_info['approval'] = approvals
+   
+   
+   let vote_num = len(approvals)
+   let sn_numbers = safemath.safenumber(len(self.storage.voters))
+   let sn_mul = safemath.safenumber(2)
+   let sn_div = safemath.safenumber(3)
+   let sn_ret = safemath.number_add(safemath.number_div(safemath.number_multiply(sn_numbers,sn_mul),sn_div),safemath.safenumber(1))
+   if safemath.number_gte(safemath.safenumber(vote_num),sn_ret) then
+       vote_info['finished'] = true
+   end
    fast_map_set('votes',parsed[1],json.dumps(vote_info))
 end
 
@@ -173,5 +183,19 @@ offline M:get_vote(args:string)
    end
    vote_info = to_table(json.loads(to_string(vote_obj)))
    let r = json.dumps(vote_info)
+   
+   vote_info = to_table(json.loads(to_string(vote_obj)))
+   if not vote_info[finished] then
+       let sn_current_time = safemath.safenumber(get_chain_now())
+	   let sn_expiration_time = safemath.safenumber(vote_info['expiration time'])
+	   
+	   if safemath.number_gte(sn_current_time,sn_expiration_time) then
+	       vote_info[finished] = true
+		   fast_map_set('votes',parsed[1],json.dumps(vote_info))
+	   end
+	   
+   end
+   
+   
    return r
 end

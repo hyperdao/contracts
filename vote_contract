@@ -7,7 +7,9 @@ type Storage = {
 	state:string,
 	priceFeederAddr:string,
 	cdcAddr:string,
-	stableTokenAddr:string
+	stableTokenAddr:string,
+	voters:array<string>
+	current_votes:array<string>
 }
 
 -- events: Stopped
@@ -23,6 +25,7 @@ function M:init()
 	self.storage.priceFeederAddr = ''
 	self.storage.cdcAddr = ''
 	self.storage.voters = []
+	
     print("cdc contract created")
 end
 
@@ -136,6 +139,7 @@ function M:propose(arg:string)
 	let txid = get_transaction_id()
 	proposal_info = {"proposer":get_from_address(),"topic":voter,"create_time":get_chain_now(),'expiration time':get_chain_now()+24*3600,'approval':[],'finished':false}
 	fast_map_set('votes',txid,json.dumps(proposal_info))
+	table.append(self.storage.current_votes,txid)
 end
 
 function M:approval(arg:string)
@@ -170,6 +174,7 @@ function M:approval(arg:string)
    let sn_ret = safemath.number_add(safemath.number_div(safemath.number_multiply(sn_numbers,sn_mul),sn_div),safemath.safenumber(1))
    if safemath.number_gte(safemath.safenumber(vote_num),sn_ret) then
        vote_info['finished'] = true
+	   table.remove(self.storage.current_votes,parsed[1])
    end
    fast_map_set('votes',parsed[1],json.dumps(vote_info))
 end
@@ -192,10 +197,21 @@ offline M:get_vote(args:string)
 	   if safemath.number_gte(sn_current_time,sn_expiration_time) then
 	       vote_info[finished] = true
 		   fast_map_set('votes',parsed[1],json.dumps(vote_info))
+		   table.remove(self.storage.current_votes,parsed[1])
 	   end
 	   
    end
    
    
    return r
+end
+
+offline M:list_votes(_:string)
+    let length = len(self.storage.current_votes)
+	let r:array<string> = []
+	for _, value in ipairs(self.storage.current_votes) do
+       let ret = get_vote(value)
+	   table.append(r,ret)
+    end
+	return r
 end

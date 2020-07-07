@@ -177,6 +177,24 @@ function M:approval(arg:string)
 	   table.remove(self.storage.current_votes,parsed[1])
    end
    fast_map_set('votes',parsed[1],json.dumps(vote_info))
+   --we need to check 
+   array<string> votes = ['annualStabilityFee','liquidationRatio','liquidationPenalty','liquidationDiscount']
+   let topic = vote_info['topic']
+   let cdcContract:object = import_contract_from_address(self.storage.cdcAddr)
+   if topic == 'annualStabilityFee' then
+       cdcContract:setAnnualStabilityFee("")
+   end
+   if topic == 'liquidationRatio' then
+       cdcContract:setLiquidationRatio('')
+   end
+   if topic == 'liquidationPenalty' then
+       cdcContract:setLiquidationPenalty('')
+   end
+   if topic == 'liquidationDiscount' then 
+       cdcContract:setLiquidationDiscount('')
+   end
+   
+   
 end
 
 

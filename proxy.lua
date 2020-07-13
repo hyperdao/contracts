@@ -763,6 +763,10 @@ function M:on_destroy()
     error("can't destroy cdc proxy contract")
 end
 
+function M:addtional_use(arg:string)
+    return 'todo'
+end
+
 return M
 
 

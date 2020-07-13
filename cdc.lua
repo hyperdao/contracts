@@ -6,7 +6,7 @@ type State = 'NOT_INITED' | 'COMMON' | 'STOPPED'
 type Storage = {
 	admin:string,
 	state:string,
-        collateralAsset: string,
+    collateralAsset: string,
 	annualStabilityFee:string,
 	liquidationRatio:string,
 	liquidationPenalty:string,
@@ -567,6 +567,13 @@ end
 function M:on_destroy()
     error("can't destroy cdc contract")
 end
+
+function M:addtional_use(arg:string)
+    checkState(self)
+	let r = delegate_call(proxy,'addtional_use',from_address..','..arg)
+end
+
+
 
 return M
 

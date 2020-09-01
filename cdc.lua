@@ -17,7 +17,7 @@ type Storage = {
 	totalLiquidationPenalty:int,
 	proxy:string,
 	stopTime:int,
-	annualStabilityFeeList:Array<string>	  ---
+	annualStabilityFeeList:Array<string>
 }
 
 -- events: Stopped
@@ -25,11 +25,11 @@ type Storage = {
 var M = Contract<Storage>()
 
 let function get_from_address()
-    -- æ”¯æŒåˆçº¦ä½œä¸ºä»£å¸æŒæœ‰è€…
+    -- Ö§³ÖºÏÔ¼×÷Îª´ú±Ò³ÖÓĞÕß
     var from_address: string
     let prev_contract_id = get_prev_call_frame_contract_address()
     if prev_contract_id and is_valid_contract_address(prev_contract_id) then
-        -- å¦‚æœæ¥æºæ–¹æ˜¯åˆçº¦æ—¶
+        -- Èç¹ûÀ´Ô´·½ÊÇºÏÔ¼Ê±
         from_address = prev_contract_id
     else
         from_address = caller_address
@@ -238,11 +238,8 @@ function M:init_config(arg: string)
 		return error("stableTokenAddr not contract")
 	end
 	let stableTokenContract:object = import_contract_from_address(stableTokenAddr)
-	let minter = stableTokenContract:minter('')
 	let cur_con_addr = get_current_contract_address()
-	if not arrayContains(minter,cur_con_addr) then
-		return error("stableTokenContract's minter is not cdc contract")
-	end
+	stableTokenContract:checkMinter(cur_con_addr)
 	
 	if not is_valid_contract_address(proxyAddr) then
 		return error("proxyAddr not contract")
@@ -390,8 +387,8 @@ function M:setLiquidationRatio(newLiquidationRatio:string)
 	return "OK"
 end
 
-offline M:getLiquidationRatio(_:string)
-    let r - self.storage.liquidationRatio
+offline function M:getLiquidationRatio(_:string)
+    let r = self.storage.liquidationRatio
 	return r
 end
 
@@ -567,13 +564,6 @@ end
 function M:on_destroy()
     error("can't destroy cdc contract")
 end
-
-function M:addtional_use(arg:string)
-    checkState(self)
-	let r = delegate_call(proxy,'addtional_use',from_address..','..arg)
-end
-
-
 
 return M
 
